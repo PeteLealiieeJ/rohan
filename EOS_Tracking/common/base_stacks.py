@@ -1,4 +1,3 @@
-import threading
 from abc                                    import abstractmethod
 from EOS_Tracking.common.base               import _EOSBase,_EOSThreading
 from EOS_Tracking.data.classes              import StackConfiguration
@@ -8,22 +7,27 @@ from EOS_Tracking.common.base_networks      import BaseNetwork
 from EOS_Tracking.common.logging            import Logger
 from typing                                 import Optional, List, Dict, Union, Any, TypeVar
 from contextlib                             import nullcontext, ExitStack
-from time                                   import sleep
+from EOS_Tracking.utils.timers              import IntervalTimer
 
 SelfBaseStack = TypeVar("SelfBaseStack", bound="BaseStack" )
 class BaseStack(_EOSBase): 
     """
     Base class for an arbitrary camera(s) + controller(s) + network(s) stack
     :param config: configuration as EOS-Tracker StackConfiguration() dataclass
+    :param spin_intrvl: Inverse-frequency of spinning loop
     """
 
     process_name : str = "unnamed stack"
-    config : StackConfiguration
+    config       : StackConfiguration
+    spin_intrvl  : float 
+
 
     def __init__( 
         self, 
-        config : Optional[StackConfiguration] = None
+        config      : Optional[StackConfiguration] = None,
+        spin_intrvl : float = -1
     ):
+        self.spin_intrvl = spin_intrvl
         self.configure(config=config)
 
     def configure(
@@ -41,7 +45,7 @@ class BaseStack(_EOSBase):
         """
         Spin-up stack
         """
-
+        spin_timer = IntervalTimer(interval=self.spin_intrvl)
         with ExitStack() as stack, Logger(self.config.log_filename) as logger: 
             _networks, _cameras, _controllers = self._enter_subcontexts( stack=stack, logger=logger ) 
 
@@ -52,6 +56,7 @@ class BaseStack(_EOSBase):
                 )
             try:
                 while True:
+                    spin_timer.await_interval()
                     self.process( 
                         network=_networks, 
                         camera=_cameras, 
@@ -158,15 +163,20 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
     """
     Base class for an arbitrary camera(s) + controller(s) + network(s) stack
     :param config: configuration as EOS-Tracker StackConfiguration() dataclass
+    :param spin_intrvl: Inverse-frequency of spinning loop
     """
     
     _instance      = None
 
     def __init__( 
         self, 
-        config : Optional[StackConfiguration] = None
+        config      : Optional[StackConfiguration] = None,
+        spin_intrvl : float = -1
     ):
-        BaseStack.__init__( config=config )
+        BaseStack.__init__( 
+            config=config, 
+            spin_intrvl=spin_intrvl 
+        )
         _EOSThreading.__init__( self )
 
     def configure(
@@ -186,7 +196,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
         """
         Spin-up stack
         """
-
+        spin_timer = IntervalTimer(interval=self.spin_intrvl)
         with ExitStack() as stack, Logger(self.config.log_filename) as logger: 
             _networks, _cameras, _controllers = self._enter_subcontexts( stack=stack, logger=logger ) 
 
@@ -197,6 +207,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
                 )
             
             while not self.stop_sig.is_set():
+                spin_timer.await_interval()
                 self.process( 
                     network=_networks, 
                     camera=_cameras, 

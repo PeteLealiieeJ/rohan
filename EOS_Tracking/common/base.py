@@ -10,8 +10,7 @@ class _EOSBase(ABC):
         self,
         **kwargs,
     ):
-        for key, value in kwargs.items():
-            setattr( self, key, value )
+        self.__dict__.update(kwargs)
 
 class _EOSThreading(ABC):
     """
