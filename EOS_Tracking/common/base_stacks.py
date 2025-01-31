@@ -174,6 +174,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
         spin_intrvl : float = -1
     ):
         BaseStack.__init__( 
+            self,
             config=config, 
             spin_intrvl=spin_intrvl 
         )
@@ -190,7 +191,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
         """
         if not config is None:
             with self._instance_lock:
-                BaseStack.configure(config=config)
+                BaseStack.configure(self,config=config)
 
 
     def spin( self ) -> None:
