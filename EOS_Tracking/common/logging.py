@@ -28,11 +28,6 @@ class Logger(_EOSThreading):
         _EOSThreading.__init__( self )
         self.init_time      = time()
         self.filename       = filename
-        self.log_queue      = Queue(maxsize=queue_size)
-        self.thread_intrvl  = thread_intrvl
-        
-    def __enter__( self ):
-        self.start_spin()
         if self.filename is not None:
             try:
                 self.file = open(self.filename,"w")
@@ -42,6 +37,12 @@ class Logger(_EOSThreading):
                     f'Failed to open {self.filename} with exception {e}',
                     process_name=self.process_name
                 )
+        self.log_queue      = Queue(maxsize=queue_size)
+        self.thread_intrvl  = thread_intrvl
+        self.add_threaded_method( target=self.spin )
+        
+    def __enter__( self ):
+        self.start_spin()
         self.write(
             f'Spinning up thread',
             process_name=self.process_name
@@ -59,6 +60,7 @@ class Logger(_EOSThreading):
             self.file.close()
         self.file = None
 
+
     def _format_msg( 
         self, 
         msg          : str,
@@ -74,14 +76,14 @@ class Logger(_EOSThreading):
 
     def spin( self ):
         thread_timer = IntervalTimer(interval=self.thread_intrvl)
-        while not self.stop_sig.is_set():
+        while not self.sigterm.is_set():
             while not self.log_queue.empty(): 
                 thread_timer.await_interval()
                 formatted_msg = self.log_queue.get()
                 print( formatted_msg )
                 if isinstance(self.file,TextIOWrapper):
                     try:
-                        self.file.write( formatted_msg )
+                        self.file.write( formatted_msg + "\n")
                     except Exception as e:
                         print(  
                             self._format_msg( 

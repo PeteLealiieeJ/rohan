@@ -1,6 +1,6 @@
 import threading
-from abc import ABC, abstractmethod
-from typing import Optional
+from abc    import ABC, abstractmethod
+from typing import Optional, List, Iterable, Any, Mapping, Callable
 
 class _EOSBase(ABC):
     """
@@ -17,44 +17,45 @@ class _EOSThreading(ABC):
     Class for spinning off threads in EOS-Tracking modules
     """
 
-    stop_sig        : threading.Event
-    spun_thread     : Optional[threading.Thread]
-    _process_lock   : threading.Lock = threading.Lock() 
+    sigterm         : threading.Event
+    threads         : List[threading.Thread]
+    _instance_lock  : threading.Lock = threading.Lock() 
 
 
     def __init__( self ):
-        self.spun_thread = None
-        self.stop_sig    = threading.Event()
+        self.threads    = []
+        self.sigterm    = threading.Event()
+
+    def add_threaded_method( 
+        self,
+        target  : Callable[[],None],
+        name    : Optional[str]                 = None,
+        args    : Iterable[Any]                 = (),
+        kwargs  : Optional[ Mapping[str, Any] ] = None,
+    ):
+        self.threads.append( 
+            threading.Thread(
+                target  = target,
+                name    = name,
+                args    = args,
+                kwargs  = kwargs
+            )
+        )
 
     def start_spin( self ) -> None:
         """
-        Signal to start threaded process
+        Signal to start threaded processes
         """
-        def _spin_thread():
-            self.stop_sig.clear()
-            self.spun_thread = threading.Thread(
-                target=self.spin,
-            )
-            self.spun_thread.start()
-
-        if self.spun_thread is None:
-            _spin_thread()
-        elif isinstance(self.spun_thread,threading.Thread):
-            if not self.spun_thread.is_alive():
-                _spin_thread()
-
+        self.sigterm.clear()
+        for thread in self.threads:
+            if isinstance(thread,threading.Thread):
+                thread.start()
 
     def stop_spin( self ) -> None:
         """
-        Signal to stop threaded process
+        Signal to stop threaded processes
         """            
-        self.stop_sig.set()
-        if isinstance(self.spun_thread,threading.Thread):
-            if self.spun_thread.is_alive():
-                self.spun_thread.join()         
-
-    @abstractmethod
-    def spin( self ) -> None:
-        """
-        Threaded process
-        """
+        self.sigterm.set()
+        for thread in self.threads:
+            if isinstance(thread,threading.Thread):
+                thread.join()

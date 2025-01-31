@@ -178,6 +178,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
             spin_intrvl=spin_intrvl 
         )
         _EOSThreading.__init__( self )
+        self.add_threaded_method( target=self.spin )
 
     def configure(
         self,
@@ -188,7 +189,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
         :param config: configuration as EOS-Tracker StackConfiguration() dataclass
         """
         if not config is None:
-            with self._process_lock:
+            with self._instance_lock:
                 BaseStack.configure(config=config)
 
 
@@ -206,7 +207,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
                     process_name=self.process_name
                 )
             
-            while not self.stop_sig.is_set():
+            while not self.sigterm.is_set():
                 spin_timer.await_interval()
                 self.process( 
                     network=_networks, 
@@ -225,7 +226,7 @@ class BaseThreadedStack(BaseStack,_EOSThreading):
         """
         Ensure singleton instance
         """
-        with cls._process_lock:
+        with cls._instance_lock:
             if cls._instance is None:
                 cls._instance = cls()
         return cls._instance
