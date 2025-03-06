@@ -60,7 +60,8 @@ class StackBase(_RohanBase):
                     self.process( 
                         network=_networks, 
                         camera=_cameras, 
-                        controller=_controllers
+                        controller=_controllers,
+                        logger=logger
                     )
 
             except KeyboardInterrupt:
@@ -139,6 +140,7 @@ class StackBase(_RohanBase):
         network     : Optional[ Union[ NetworkBase, List[NetworkBase], Dict[Any,NetworkBase] ] ]               = None,
         camera      : Optional[ Union[ CameraBase, List[CameraBase], Dict[Any,CameraBase] ] ]                  = None,
         controller  : Optional[ Union[ ControllerBase, List[ControllerBase], Dict[Any,ControllerBase] ] ]      = None,
+        logger      : Optional[ Logger ]                                                                       = None
     ) -> None: 
         """
         Processes incoming data from camera(s) to determine control(s) being sent to hardware via specified network(s)
@@ -203,7 +205,8 @@ class ThreadedStackBase(StackBase,_RohanThreading):
                 self.process( 
                     network=_networks, 
                     camera=_cameras, 
-                    controller=_controllers
+                    controller=_controllers,
+                    logger=logger
                 )
 
             if isinstance(logger,Logger): 
