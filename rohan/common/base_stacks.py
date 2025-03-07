@@ -158,7 +158,8 @@ class ThreadedStackBase(StackBase,_RohanThreading):
     :param spin_intrvl: Inverse-frequency of spinning loop
     """
     
-    _instance      = None
+    _instance                       = None
+    logger      : Optional[Logger]  = None
 
     def __init__( 
         self, 
@@ -172,6 +173,28 @@ class ThreadedStackBase(StackBase,_RohanThreading):
         )
         _RohanThreading.__init__( self )
         self.add_threaded_method( target=self.spin )
+
+
+    def __enter__( self ):
+        self.logger = Logger(self.config.log_filename).__enter__()
+        self.start_spin()
+        if isinstance(self.logger,Logger): 
+            self.logger.write(
+                f'Spinning up stack threads',
+                process_name=self.process_name
+            )
+        return self
+    
+
+    def __exit__( self, exception_type, exception_value, traceback ):
+        self.stop_spin()
+        if isinstance(self.logger,Logger): 
+            self.logger.write(
+                f'Unravelling stack threads',
+                process_name=self.process_name
+            )
+        self.logger.__exit__(exception_type, exception_value, traceback)
+
 
     def configure(
         self,
@@ -191,11 +214,11 @@ class ThreadedStackBase(StackBase,_RohanThreading):
         Spin-up stack
         """
         spin_timer = IntervalTimer(interval=self.spin_intrvl)
-        with Logger(self.config.log_filename) as logger, ExitStack() as stack: 
-            _networks, _cameras, _controllers = self._enter_subcontexts( stack=stack, logger=logger ) 
+        with ExitStack() as stack: 
+            _networks, _cameras, _controllers = self._enter_subcontexts( stack=stack, logger=self.logger ) 
 
-            if isinstance(logger,Logger): 
-                logger.write(
+            if isinstance(self.logger,Logger): 
+                self.logger.write(
                     f'Spinning up stack',
                     process_name=self.process_name
                 )
@@ -206,11 +229,11 @@ class ThreadedStackBase(StackBase,_RohanThreading):
                     network=_networks, 
                     camera=_cameras, 
                     controller=_controllers,
-                    logger=logger
+                    logger=self.logger
                 )
 
-            if isinstance(logger,Logger): 
-                    logger.write(
+            if isinstance(self.logger,Logger): 
+                    self.logger.write(
                         f'Spinning down stack',
                         process_name=self.process_name
                     )
