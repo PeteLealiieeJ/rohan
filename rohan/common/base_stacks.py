@@ -4,6 +4,8 @@ from rohan.data.classes              import StackConfiguration
 from rohan.common.base_cameras       import CameraBase
 from rohan.common.base_controllers   import ControllerBase
 from rohan.common.base_networks      import NetworkBase
+from rohan.common.base_guidances     import GuidanceBase
+from rohan.common.base_navigations   import NavigationBase
 from rohan.common.logging            import Logger
 from typing                          import Optional, List, Dict, Union, Any, TypeVar, Type
 from contextlib                      import nullcontext, ExitStack
@@ -47,7 +49,7 @@ class StackBase(_RohanBase):
         """
         spin_timer = IntervalTimer(interval=self.spin_intrvl)
         with Logger(self.config.log_filename) as logger, ExitStack() as stack: 
-            _networks, _cameras, _controllers = self._enter_subcontexts( stack=stack, logger=logger ) 
+            _networks, _cameras, _controllers, _guidances, _navigations = self._enter_subcontexts( stack=stack, logger=logger ) 
 
             if isinstance(logger,Logger): 
                 logger.write(
@@ -61,6 +63,8 @@ class StackBase(_RohanBase):
                         network=_networks, 
                         camera=_cameras, 
                         controller=_controllers,
+                        guidance=_guidances,
+                        navigation=_navigations,
                         logger=logger
                     )
 
@@ -131,8 +135,18 @@ class StackBase(_RohanBase):
             obj_configs     = self.config.controller_configs,
             obj_baseclass   = ControllerBase
         )
+        guidances   = _enter_subcontext( 
+            obj_classes     = self.config.guidance_classes,
+            obj_configs     = self.config.guidance_configs,
+            obj_baseclass   = GuidanceBase
+        )
+        navigations = _enter_subcontext( 
+            obj_classes     = self.config.navigation_classes,
+            obj_configs     = self.config.navigation_configs,
+            obj_baseclass   = NavigationBase
+        )
 
-        return networks, cameras, controllers
+        return networks, cameras, controllers, guidances, navigations
 
     @abstractmethod
     def process(  
@@ -140,6 +154,8 @@ class StackBase(_RohanBase):
         network     : Optional[ Union[ NetworkBase, List[NetworkBase], Dict[Any,NetworkBase] ] ]               = None,
         camera      : Optional[ Union[ CameraBase, List[CameraBase], Dict[Any,CameraBase] ] ]                  = None,
         controller  : Optional[ Union[ ControllerBase, List[ControllerBase], Dict[Any,ControllerBase] ] ]      = None,
+        guidance    : Optional[ Union[ GuidanceBase, List[GuidanceBase], Dict[Any,GuidanceBase] ] ]            = None,
+        navigation  : Optional[ Union[ NavigationBase, List[NavigationBase], Dict[Any,NavigationBase] ] ]      = None,
         logger      : Optional[ Logger ]                                                                       = None
     ) -> None: 
         """
@@ -215,7 +231,7 @@ class ThreadedStackBase(StackBase,_RohanThreading):
         """
         spin_timer = IntervalTimer(interval=self.spin_intrvl)
         with ExitStack() as stack: 
-            _networks, _cameras, _controllers = self._enter_subcontexts( stack=stack, logger=self.logger ) 
+            _networks, _cameras, _controllers, _guidances, _navigations = self._enter_subcontexts( stack=stack, logger=self.logger ) 
 
             if isinstance(self.logger,Logger): 
                 self.logger.write(
@@ -229,6 +245,8 @@ class ThreadedStackBase(StackBase,_RohanThreading):
                     network=_networks, 
                     camera=_cameras, 
                     controller=_controllers,
+                    guidance=_guidances,
+                    navigation=_navigations,
                     logger=self.logger
                 )
 
