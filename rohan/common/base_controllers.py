@@ -63,7 +63,7 @@ class ThreadedControllerBase(ControllerBase,_RohanThreading):
         self,
         logger : Optional[Logger] = None  
     ):
-        ControllerBase.__init__(logger=logger)
+        ControllerBase.__init__( self, logger=logger )
         _RohanThreading.__init__( self )
     
     def __enter__( self ):

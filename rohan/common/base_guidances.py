@@ -63,7 +63,7 @@ class ThreadedGuidanceBase(GuidanceBase,_RohanThreading):
         self,
         logger : Optional[Logger] = None  
     ):
-        GuidanceBase.__init__(logger=logger)
+        GuidanceBase.__init__( self, logger=logger )
         _RohanThreading.__init__( self )
     
     def __enter__( self ):

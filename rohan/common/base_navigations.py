@@ -63,7 +63,7 @@ class ThreadedNavigationBase(NavigationBase,_RohanThreading):
         self,
         logger : Optional[Logger] = None  
     ):
-        NavigationBase.__init__(logger=logger)
+        NavigationBase.__init__( self, logger=logger )
         _RohanThreading.__init__( self )
     
     def __enter__( self ):
